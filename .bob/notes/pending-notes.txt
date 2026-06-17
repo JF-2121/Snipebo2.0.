@@ -1,5 +1,0 @@
-{"id":"a6a7ed47-f619-44c6-9963-3d893ddfffd8","ts":"2026-06-17T17:59:27.783Z","path":"/Users/hackinjosh/Desktop/Snipebo2.0./comparison_report.md","version":"1.0.0","taskID":"c191476d-f7de-4f20-82df-a9226dcbaed0"}
-{"id":"2fd341cd-5d30-4687-8f12-bb43b6f73a63","ts":"2026-06-17T18:08:12.655Z","path":"/Users/hackinjosh/Desktop/Snipebo2.0./comparison_report_v2.md","version":"1.0.0","taskID":"c191476d-f7de-4f20-82df-a9226dcbaed0"}
-{"id":"0720a734-71b8-435d-ae05-418359052d3d","ts":"2026-06-17T18:15:03.726Z","path":"/Users/hackinjosh/Desktop/Snipebo2.0./MINIMAL_IMPLEMENTATION.md","version":"1.0.0","taskID":"c191476d-f7de-4f20-82df-a9226dcbaed0"}
-{"id":"b2e8b5fb-dbcc-4521-acfe-49fb429502e3","ts":"2026-06-17T18:17:19.486Z","path":"/Users/hackinjosh/Desktop/Snipebo2.0./Snipebot/src/index.ts","version":"1.0.0","taskID":"c191476d-f7de-4f20-82df-a9226dcbaed0"}
-{"id":"31574784-6e0f-4259-8f94-bd7f6981195a","ts":"2026-06-17T18:17:23.699Z","path":"/Users/hackinjosh/Desktop/Snipebo2.0./.env.example","version":"1.0.0","taskID":"c191476d-f7de-4f20-82df-a9226dcbaed0"}
