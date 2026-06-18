@@ -41,17 +41,23 @@ async function isGuildLicensed(guildId) {
     }
 }
 const CATEGORIES = {
-    kleidung: { label: "Kleidung", keyword: "", channelName: "deals", herrenCatalogIds: [], damenCatalogIds: [] },
+    shirts: { label: "Shirts & Tops", keyword: "shirt", channelName: "men_shirts", kleinanzeigenCategory: "87" },
+    pants: { label: "Hosen & Jeans", keyword: "hose", channelName: "men_pants", kleinanzeigenCategory: "87" },
+    shoes: { label: "Schuhe", keyword: "schuhe", channelName: "men_shoes", kleinanzeigenCategory: "158" },
+    accessories: { label: "Accessoires", keyword: "", channelName: "deals", kleinanzeigenCategory: "87" },
 };
 const ALL_CATEGORY_KEYS = Object.keys(CATEGORIES);
 const CATEGORY_CHOICES = [
-    { name: "Kleidung", value: "kleidung" },
+    { name: "Shirts & Tops", value: "shirts" },
+    { name: "Hosen & Jeans", value: "pants" },
+    { name: "Schuhe", value: "shoes" },
+    { name: "Accessoires", value: "accessories" },
 ];
 const watchConfig = {
     brands: [...DEFAULT_BRANDS],
     maxPrice: undefined,
     active: true,
-    categoryKey: "kleidung",
+    categoryKey: "accessories",
     gender: "beide",
 };
 const seenItemIds = new Set();
@@ -204,9 +210,8 @@ async function postDealsForGenderTarget(client, categoryKeys, target) {
         const cat = CATEGORIES[categoryKey];
         if (!cat)
             continue;
-        logger.info(`🔍 Suche in Kategorie: ${cat.label} (${target.section})`);
+        logger.info(`🔍 Suche in Kategorie: ${cat.label}`);
         await new Promise((r) => setTimeout(r, 500));
-        // Use simple channel name without section
         const channel = (await findChannelByName(client, cat.channelName)) ?? (await getFallbackChannel(client));
         if (!channel) {
             logger.warn(`Kanal #${cat.channelName} nicht gefunden.`);
@@ -214,9 +219,10 @@ async function postDealsForGenderTarget(client, categoryKeys, target) {
         }
         for (const brand of watchConfig.brands) {
             try {
-                const searchText = brand; // Simple brand search, no category keyword
-                logger.info(`🔎 Suche: "${searchText}" (Max: ${watchConfig.maxPrice || 'unbegrenzt'}€)`);
-                // Search both platforms in parallel (no catalogIds = broader search)
+                // Build search text with category keyword
+                const searchText = cat.keyword ? `${brand} ${cat.keyword}` : brand;
+                logger.info(`🔎 Suche: "${searchText}" in #${cat.channelName} (Max: ${watchConfig.maxPrice || 'unbegrenzt'}€)`);
+                // Search both platforms in parallel
                 const [vintedItems, kleinanzeigenItems] = await Promise.all([
                     searchVinted(searchText, {
                         maxPrice: watchConfig.maxPrice,
@@ -301,18 +307,11 @@ async function postDeals(client) {
         logger.warn(`⏸️ Rate-Limit aktiv - warte noch ${waitMinutes} Minuten`);
         return;
     }
-    logger.info("🚀 Starte Deal-Suche auf Vinted & Kleinanzeigen");
-    const categoryKeys = [watchConfig.categoryKey];
-    const targets = [];
-    if (watchConfig.gender === "herren" || watchConfig.gender === "beide") {
-        targets.push({ section: "men", catalogIdsFn: (key) => CATEGORIES[key]?.herrenCatalogIds ?? [] });
-    }
-    if (watchConfig.gender === "damen" || watchConfig.gender === "beide") {
-        targets.push({ section: "woman", catalogIdsFn: (key) => CATEGORIES[key]?.damenCatalogIds ?? [] });
-    }
-    for (const target of targets) {
-        await postDealsForGenderTarget(client, categoryKeys, target);
-    }
+    logger.info("🚀 Starte Deal-Suche auf Kleinanzeigen");
+    // Search all categories
+    const categoryKeys = ALL_CATEGORY_KEYS;
+    const target = { section: "men", catalogIdsFn: () => [] };
+    await postDealsForGenderTarget(client, categoryKeys, target);
     logger.info("✅ Deal-Suche abgeschlossen");
 }
 const commands = [

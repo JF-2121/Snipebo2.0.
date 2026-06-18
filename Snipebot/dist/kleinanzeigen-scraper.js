@@ -12,19 +12,13 @@ function randomUA() {
     return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 }
 const CATEGORY_MAPPING = {
-    kleidung: "87",
-    pullover: "87",
-    hoodie: "87",
-    tshirt: "87",
-    hemd: "87",
-    jacke: "87",
-    hose: "87",
-    jeans: "87",
-    shorts: "87",
-    schuhe: "158",
+    shirts: "87", // Herrenkleidung
+    pants: "87", // Herrenkleidung
+    shoes: "158", // Herrenschuhe
+    accessories: "87", // Herrenkleidung (for general items)
 };
 function getCategoryId(categoryKey) {
-    return CATEGORY_MAPPING[categoryKey] || "87"; // Default to clothing
+    return CATEGORY_MAPPING[categoryKey] || "87";
 }
 function parsePrice(priceText) {
     // Handle formats: "50 €", "50€", "VB", "Zu verschenken"
@@ -57,7 +51,8 @@ export async function searchKleinanzeigen(searchText, options = {}) {
         if (options.maxPrice && options.maxPrice > 0) {
             params.append("maxPrice", options.maxPrice.toString());
         }
-        const searchUrl = `${KLEINANZEIGEN_BASE}/s-kleidung-damen/${categoryId}/c${categoryId}?${params.toString()}`;
+        // Use men's clothing section for all searches
+        const searchUrl = `${KLEINANZEIGEN_BASE}/s-herrenbekleidung/c87?${params.toString()}`;
         logger.info(`🔍 Kleinanzeigen Suche: ${searchText}`);
         const headers = {
             "User-Agent": randomUA(),
