@@ -15,7 +15,11 @@ function randomUA(): string {
 }
 
 function extractBrand(title: string, searchQuery: string): string {
-  const brands = ["Nike", "Adidas", "Lacoste", "Ralph Lauren", "Carhartt", "Puma", "Tommy Hilfiger"];
+  const brands = [
+    "Nike", "Adidas", "Carhartt", "Lacoste", "Ralph Lauren", "Tommy Hilfiger",
+    "Fred Perry", "Hugo Boss", "Burberry", "Hermes", "Louis Vuitton",
+    "Loro Piana", "Brooks Brothers", "Stussy", "Supreme", "Palace", "Dickies"
+  ];
   const titleLower = title.toLowerCase();
   for (const brand of brands) {
     if (titleLower.includes(brand.toLowerCase())) return brand;
@@ -36,6 +40,22 @@ function extractSize(title: string): string {
     if (match) return match[1] || match[0];
   }
   return "—";
+}
+
+function parseUploadDate(dateStr: string): Date | null {
+  try {
+    return new Date(dateStr);
+  } catch {
+    return null;
+  }
+}
+
+function isWithin7Days(uploadDate: Date | null): boolean {
+  if (!uploadDate) return false;
+  const now = new Date();
+  const diffMs = now.getTime() - uploadDate.getTime();
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+  return diffDays <= 7;
 }
 
 async function search(searchText: string, options: SearchOptions = {}): Promise<ScrapedItem[]> {
@@ -66,40 +86,51 @@ async function search(searchText: string, options: SearchOptions = {}): Promise<
     const $ = cheerio.load(response.data);
     const items: ScrapedItem[] = [];
 
-    $("div[data-testid='feed-grid'] a").each((_, element) => {
+    const scriptTag = $('script#__NEXT_DATA__[type="application/json"]').html();
+    
+    if (scriptTag) {
       try {
-        const $item = $(element);
-        const link = $item.attr("href") || "";
-        if (!link || !link.includes("/items/")) return;
+        const nextData = JSON.parse(scriptTag);
+        const itemsData = nextData?.props?.pageProps?.items || 
+                         nextData?.props?.initialState?.items?.catalogItems || 
+                         [];
         
-        const id = link.split("/items/")[1]?.split("-")[0] || "";
-        if (!id) return;
-        
-        const title = $item.find("h3").text().trim();
-        if (!title) return;
-        
-        const priceText = $item.find("[data-testid='item-price']").text().trim();
-        const priceMatch = priceText.match(/(\d+(?:[.,]\d+)?)/);
-        const price = priceMatch ? parseFloat(priceMatch[1].replace(",", ".")) : 0;
-        
-        const imageUrl = $item.find("img").attr("src") || "";
-        const brand = extractBrand(title, searchText);
-        const size = extractSize(title);
-        
-        items.push({
-          id,
-          title,
-          price,
-          size,
-          brand,
-          link: link.startsWith("http") ? link : `${VINTED_BASE}${link}`,
-          imageUrl,
-          platform: "vinted",
-        });
+        for (const item of itemsData) {
+          try {
+            const id = String(item.id || "");
+            if (!id) continue;
+            
+            const title = item.title || "";
+            if (!title) continue;
+            
+            const price = parseFloat(item.price?.amount || item.price || 0);
+            const uploadDate = parseUploadDate(item.created_at_ts || item.photo?.high_resolution?.timestamp);
+            
+            if (!isWithin7Days(uploadDate)) continue;
+            
+            const link = item.url || `${VINTED_BASE}/items/${id}`;
+            const imageUrl = item.photo?.url || item.photo?.high_resolution?.url || "";
+            const brand = extractBrand(title, searchText);
+            const size = extractSize(title);
+            
+            items.push({
+              id,
+              title,
+              price,
+              size,
+              brand,
+              link: link.startsWith("http") ? link : `${VINTED_BASE}${link}`,
+              imageUrl,
+              platform: "vinted",
+            });
+          } catch (err) {
+            logger.warn("Parse error for item:", err);
+          }
+        }
       } catch (err) {
-        logger.warn("Parse error:", err);
+        logger.error("Failed to parse __NEXT_DATA__:", err);
       }
-    });
+    }
 
     logger.info(`✅ Vinted: ${items.length} items`);
     return items;

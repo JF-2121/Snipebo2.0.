@@ -366,12 +366,59 @@ export async function startBot() {
     if (interaction.isButton()) {
       const { customId, user } = interaction;
 
+      if (customId.startsWith("save_")) {
+        await interaction.deferUpdate();
+        const itemId = customId.replace("save_", "");
+        const item = itemCache.get(itemId);
+
+        if (!item) {
+          await interaction.followUp({ content: "❌ Item nicht mehr im Cache (zu alt). Bitte nutze einen neueren Deal.", ephemeral: true });
+          return;
+        }
+
+        const savedEmbed = new EmbedBuilder()
+          .setColor(0xe91e63)
+          .setTitle(`❤️ Gemerkter Deal: ${item.brand || ""} | ${item.title}`.slice(0, 250))
+          .setURL(item.url)
+          .addFields(
+            { name: "💰 Preis", value: `**${item.price.toFixed(2)} ${item.currency}**`, inline: true },
+            { name: "📐 Größe", value: item.size || "—", inline: true },
+            { name: "✨ Zustand", value: item.condition || "—", inline: true },
+            { name: "👤 Verkäufer", value: item.seller || "—", inline: true },
+          )
+          .setFooter({ text: "Deine gemerkten Deals • Snipebot" })
+          .setTimestamp();
+        if (item.imageUrl) savedEmbed.setImage(item.imageUrl);
+
+        const platformName = item.platform === "vinted" ? "Vinted" : "Kleinanzeigen";
+        const linkRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder().setLabel(`🛒 Auf ${platformName} ansehen`).setStyle(ButtonStyle.Link).setURL(item.url),
+        );
+
+        try {
+          const dm = await user.createDM();
+          await dm.send({
+            content: `❤️ **Du hast dir einen Deal gemerkt!**`,
+            embeds: [savedEmbed],
+            components: [linkRow],
+          });
+          await interaction.followUp({ content: "✅ Deal wurde dir per DM gemerkt!", ephemeral: true });
+        } catch {
+          await interaction.followUp({
+            content: "⚠️ Deine DMs sind deaktiviert. Aktiviere DMs, um Deals zu speichern.",
+            ephemeral: true,
+          });
+        }
+        return;
+      }
+
       if (customId.startsWith("interested_")) {
+        await interaction.deferUpdate();
         try {
           await interaction.message.react("👍");
-          await interaction.reply({ content: "👍 Als interessant markiert!", ephemeral: true });
+          await interaction.followUp({ content: "👍 Als interessant markiert!", ephemeral: true });
         } catch {
-          await interaction.reply({ content: "❌ Fehler beim Reagieren.", ephemeral: true });
+          await interaction.followUp({ content: "❌ Fehler beim Reagieren.", ephemeral: true });
         }
         return;
       }
@@ -479,50 +526,6 @@ export async function startBot() {
         return;
       }
 
-      if (customId.startsWith("save_")) {
-        await interaction.deferReply({ ephemeral: true });
-        const itemId = customId.replace("save_", "");
-        const item = itemCache.get(itemId);
-
-        if (!item) {
-          await interaction.editReply("❌ Item nicht mehr im Cache (zu alt). Bitte nutze einen neueren Deal.");
-          return;
-        }
-
-        const savedEmbed = new EmbedBuilder()
-          .setColor(0xe91e63)
-          .setTitle(`❤️ Gemerkter Deal: ${item.brand || ""} | ${item.title}`.slice(0, 250))
-          .setURL(item.url)
-          .addFields(
-            { name: "💰 Preis", value: `**${item.price.toFixed(2)} ${item.currency}**`, inline: true },
-            { name: "📐 Größe", value: item.size || "—", inline: true },
-            { name: "✨ Zustand", value: item.condition || "—", inline: true },
-            { name: "👤 Verkäufer", value: item.seller || "—", inline: true },
-          )
-          .setFooter({ text: "Deine gemerkten Deals • Snipebot" })
-          .setTimestamp();
-        if (item.imageUrl) savedEmbed.setImage(item.imageUrl);
-
-        const platformName = item.platform === "vinted" ? "Vinted" : "Kleinanzeigen";
-        const linkRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder().setLabel(`🛒 Auf ${platformName} ansehen`).setStyle(ButtonStyle.Link).setURL(item.url),
-        );
-
-        try {
-          const dm = await user.createDM();
-          await dm.send({
-            content: `❤️ **Du hast dir einen Deal gemerkt!**`,
-            embeds: [savedEmbed],
-            components: [linkRow],
-          });
-          await interaction.editReply("✅ Deal wurde dir per DM gemerkt!");
-        } catch {
-          await interaction.editReply({
-            content: "⚠️ Deine DMs sind deaktiviert. Aktiviere DMs, um Deals zu speichern.",
-          });
-        }
-        return;
-      }
       return;
     }
 

@@ -23,7 +23,11 @@ function parsePrice(priceText: string): number {
 }
 
 function extractBrand(title: string, searchQuery: string): string {
-  const brands = ["Nike", "Adidas", "Lacoste", "Ralph Lauren", "Carhartt", "Puma", "Tommy Hilfiger"];
+  const brands = [
+    "Nike", "Adidas", "Carhartt", "Lacoste", "Ralph Lauren", "Tommy Hilfiger",
+    "Fred Perry", "Hugo Boss", "Burberry", "Hermes", "Louis Vuitton",
+    "Loro Piana", "Brooks Brothers", "Stussy", "Supreme", "Palace", "Dickies"
+  ];
   const titleLower = title.toLowerCase();
   for (const brand of brands) {
     if (titleLower.includes(brand.toLowerCase())) return brand;
@@ -57,22 +61,63 @@ function isValidMensSize(size: string): boolean {
   return false;
 }
 
-function isQualityDeal(item: ScrapedItem, searchText: string): boolean {
+function parseUploadDate(dateText: string): Date | null {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  
+  if (dateText.includes("Heute") || dateText.includes("heute")) {
+    return today;
+  }
+  
+  if (dateText.includes("Gestern") || dateText.includes("gestern")) {
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    return yesterday;
+  }
+  
+  const match = dateText.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+  if (match) {
+    const day = parseInt(match[1]);
+    const month = parseInt(match[2]) - 1;
+    const year = parseInt(match[3]);
+    return new Date(year, month, day);
+  }
+  
+  return null;
+}
+
+function isWithin7Days(uploadDate: Date | null): boolean {
+  if (!uploadDate) return false;
+  const now = new Date();
+  const diffMs = now.getTime() - uploadDate.getTime();
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+  return diffDays <= 7;
+}
+
+function isQualityDeal(item: ScrapedItem, searchText: string, uploadDate: Date | null): boolean {
   const titleLower = item.title.toLowerCase();
   const kidsKeywords = ["kinder", "baby", "junge", "mädchen", "kids", "junior"];
   if (kidsKeywords.some(k => titleLower.includes(k))) return false;
   const defectKeywords = ["defekt", "kaputt", "beschädigt", "riss", "loch", "fleck"];
   if (defectKeywords.some(k => titleLower.includes(k))) return false;
-  const brands = ["nike", "adidas", "lacoste", "ralph lauren", "carhartt", "puma", "tommy hilfiger"];
+  const brands = [
+    "nike", "adidas", "carhartt", "lacoste", "ralph lauren", "tommy hilfiger",
+    "fred perry", "hugo boss", "burberry", "hermes", "louis vuitton",
+    "loro piana", "brooks brothers", "stussy", "supreme", "palace", "dickies"
+  ];
   const hasBrand = brands.some(b => titleLower.includes(b));
   if (!hasBrand) return false;
   if (!isValidMensSize(item.size)) return false;
   if (item.price < 1 || item.price > 200) return false;
+  if (!isWithin7Days(uploadDate)) return false;
   return true;
 }
 
 async function search(searchText: string, options: SearchOptions = {}): Promise<ScrapedItem[]> {
   try {
+    const category = options.category || "accessories";
+    const categoryPath = category === "shoes" ? "c153" : "c153";
+    
     const params = new URLSearchParams({
       keywords: searchText,
       sortingField: "SORTING_DATE",
@@ -82,7 +127,7 @@ async function search(searchText: string, options: SearchOptions = {}): Promise<
       params.append("maxPrice", options.maxPrice.toString());
     }
     
-    const searchUrl = `${KLEINANZEIGEN_BASE}/s-herrenbekleidung/c87?${params.toString()}`;
+    const searchUrl = `${KLEINANZEIGEN_BASE}/s-herrenbekleidung/${categoryPath}?${params.toString()}`;
     logger.info(`🔍 Kleinanzeigen: ${searchText}`);
 
     const response = await fetchWithRetry(searchUrl, {
@@ -112,6 +157,9 @@ async function search(searchText: string, options: SearchOptions = {}): Promise<
         const priceText = $item.find(".aditem-main--middle--price-shipping--price").text().trim();
         const price = parsePrice(priceText);
         
+        const dateText = $item.find(".aditem-main--top--right").text().trim();
+        const uploadDate = parseUploadDate(dateText);
+        
         const relativeUrl = $item.find("a.ellipsis").attr("href") || "";
         const link = relativeUrl.startsWith("http") ? relativeUrl : `${KLEINANZEIGEN_BASE}${relativeUrl}`;
         
@@ -135,7 +183,7 @@ async function search(searchText: string, options: SearchOptions = {}): Promise<
           platform: "kleinanzeigen",
         };
         
-        if (isQualityDeal(item, searchText)) {
+        if (isQualityDeal(item, searchText, uploadDate)) {
           items.push(item);
         }
       } catch (err) {
