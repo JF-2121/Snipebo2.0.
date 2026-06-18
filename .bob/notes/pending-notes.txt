@@ -1,1 +1,0 @@
-{"id":"e33c2732-ebc8-435c-8257-b0a6f6d4bf3b","ts":"2026-06-18T15:29:18.426Z","path":"/Users/hackinjosh/Desktop/Snipebo2.0./Snipebot/src/kleinanzeigen-scraper.ts","version":"1.0.0","taskID":"2ed89efb-f2f3-4540-80b7-971b66590e11"}
